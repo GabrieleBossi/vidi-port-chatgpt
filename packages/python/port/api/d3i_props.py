@@ -249,11 +249,8 @@ class PropsUIPromptQuestionnaire:
         PropsUIQuestionMultipleChoiceCheckbox | 
         PropsUIQuestionOpen
     ]
-<<<<<<< HEAD
     questionToChatgpt: str
     answerFromChatgpt: str
-=======
->>>>>>> dd-task/master
 
     def toDict(self):
         """
