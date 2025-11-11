@@ -67,7 +67,7 @@ class FlowBuilder:
                 if validation.get_status_code_id() == 0:
                     logger.info(f"Payload for {self.platform_name}")
                     self.table_list = self.extract_data(file_result.value, validation)
-                    question, answer = chatgpt.select_random_qa(file_result.value)
+                    first_question, first_answer, middle_question, middle_answer, last_question, last_answer = chatgpt.select_three_qas(file_result.value)
                     if isinstance(self.table_list, Generator):
                         self.table_list = yield from self.table_list
 
@@ -97,13 +97,30 @@ class FlowBuilder:
                 yield ph.donate(f"{self.session_id}", reviewed_data)
 
                 # render questionnaire
-                if question != "" and answer != "":
-                    render_questionnaire_results = yield ph.render_page(
+                # modified including three questions and answers rather than just a random one
+                if first_question != "" and first_answer != "":
+                    render_first_questionnaire_results = yield ph.render_page(
                         props.Translatable({"en":"","nl":""}), 
-                        chatgpt.generate_questionnaire(question, answer)
+                        chatgpt.generate_first_questionnaire(first_question, first_answer)
                     )
-                    if render_questionnaire_results.__type__ == "PayloadJSON":
-                        yield ph.donate(f"{self.session_id}-questionnaire-donation", render_questionnaire_results.value)
+                    if render_first_questionnaire_results.__type__ == "PayloadJSON":
+                        yield ph.donate(f"{self.session_id}-first-questionnaire-donation", render_first_questionnaire_results.value)
+
+                        if middle_question != "" and middle_answer != "":
+                            render_second_questionnaire_results = yield ph.render_page(
+                        props.Translatable({"en":"","nl":""}), 
+                        chatgpt.generate_second_questionnaire(middle_question, middle_answer)
+                        )
+                        if render_second_questionnaire_results.__type__ == "PayloadJSON":
+                            yield ph.donate(f"{self.session_id}-second-questionnaire-donation", render_second_questionnaire_results.value)
+                            
+                            if last_question != "" and last_answer != "":
+                                render_third_questionnaire_results = yield ph.render_page(
+                            props.Translatable({"en":"","nl":""}), 
+                            chatgpt.generate_third_questionnaire(last_question, last_answer)
+                            )
+                            if render_third_questionnaire_results.__type__ == "PayloadJSON":
+                                yield ph.donate(f"{self.session_id}-third-questionnaire-donation", render_third_questionnaire_results.value)
 
             if result.__type__ == "PayloadFalse":
                 value = json.dumps('{"status" : "data_submission declined"}')

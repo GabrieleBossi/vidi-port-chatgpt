@@ -116,8 +116,9 @@ def extraction(chatgpt_zip: str) -> list[d3i_props.PropsUIPromptConsentFormTable
     return tables_to_render
 
 
-def select_random_qa(chatgpt_zip: str)  -> Tuple[str, str]:
+def select_three_qas(chatgpt_zip: str)  -> Tuple[str, str]:
     """
+    Code to extract first, middle and last message sent by the user and corresponding answer by ChatGPT
     The extra effort is made here to make sure the answers is actually a follow up of the question 
     and to make sure the question is the first in the conversation
     """
@@ -126,8 +127,12 @@ def select_random_qa(chatgpt_zip: str)  -> Tuple[str, str]:
     conversations = eh.read_json_from_bytes(b)
 
     datapoints = []
-    question = ""
-    answer = ""
+    first_question = ""
+    first_answer = ""
+    middle_question = ""
+    middle_answer = ""
+    last_question = ""
+    last_answer = ""
     try:
         for conversation in conversations:
             title = conversation["title"]
@@ -161,10 +166,16 @@ def select_random_qa(chatgpt_zip: str)  -> Tuple[str, str]:
         condition = no_parents & is_user 
 
         ids = df["id"][condition].tolist()
-        np.random.shuffle(ids)
+
+        first_id = ids[0]
+        middle_id = ids[len(ids)//2]
+        last_id = ids[-1]
+        ids_filtered = [first_id, middle_id, last_id]
 
         # check all suitable id's if for some reason a mistake happens check the next id
-        for id in ids:
+        qls = []
+        als = []
+        for id in ids_filtered:
             ql = df["message"][df["id"] == id].tolist()
             al = df["message"][df["parent"] == id].tolist()
             if (
@@ -173,14 +184,23 @@ def select_random_qa(chatgpt_zip: str)  -> Tuple[str, str]:
                 ql[0] != "" and 
                 al[0] != ""
             ):
-                question = ql[0]
-                answer = al[0]
+                qls.append(ql[0])
+                als.append(al[0])
+
+            if len(qls) == 3 and len(als) == 3:
                 break
 
     except Exception as e:
         logger.error("Data extraction error: %s", e)
-        
-    return question, answer
+
+    first_question = qls[0]
+    first_answer = als[0]
+    middle_question = qls[1]
+    middle_answer = als[1]
+    last_question = qls[2]
+    last_answer = als[2]
+
+    return first_question, first_answer, middle_question, middle_answer, last_question, last_answer
 
 
 # Random question questionnaire
@@ -241,7 +261,7 @@ Q1_CHOICES = [
 #    return CommandUIRender(page)
 
 
-def generate_questionnaire(question: str, answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
+def generate_first_questionnaire(first_question: str, first_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
     """
     Administer a basic questionnaire in Port.
 
@@ -267,8 +287,7 @@ def generate_questionnaire(question: str, answer: str) -> d3i_props.PropsUIPromp
             "nl": "Hieronder vind u het begin van een gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
     })
 
-
-    multiple_choice_question = d3i_props.PropsUIQuestionMultipleChoice(
+    multiple_choice_q1 = d3i_props.PropsUIQuestionMultipleChoice(
         id=1,
         question=Q1,
         choices=Q1_CHOICES,
@@ -277,12 +296,55 @@ def generate_questionnaire(question: str, answer: str) -> d3i_props.PropsUIPromp
     return d3i_props.PropsUIPromptQuestionnaire(
         description=questionnaire_description,
         questions=[
-            multiple_choice_question,
+            multiple_choice_q1,
         ],
-        questionToChatgpt=question,
-        answerFromChatgpt=answer,
+        questionToChatgpt=first_question,
+        answerFromChatgpt=first_answer,
     )
 
+def generate_second_questionnaire(middle_question: str, middle_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
+    questionnaire_description = props.Translatable(
+        {
+            "en": "Below you can find the start of a second conversation you had with ChatGPT. We would like to ask you a question about it.",
+            "nl": "Hieronder vind u het begin van een tweede gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
+    })
+
+    multiple_choice_q2 = d3i_props.PropsUIQuestionMultipleChoice(
+        id=2,
+        question=Q1,
+        choices=Q1_CHOICES,
+    )
+
+    return d3i_props.PropsUIPromptQuestionnaire(
+        description=questionnaire_description,
+        questions=[
+            multiple_choice_q2,
+        ],
+        questionToChatgpt=middle_question,
+        answerFromChatgpt=middle_answer,
+    )
+
+def generate_third_questionnaire(last_question: str, last_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
+    questionnaire_description = props.Translatable(
+        {
+            "en": "Below you can find the start of a third conversation you had with ChatGPT. We would like to ask you a question about it.",
+            "nl": "Hieronder vind u het begin van een derde gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
+    })
+
+    multiple_choice_q3 = d3i_props.PropsUIQuestionMultipleChoice(
+        id=3,
+        question=Q1,
+        choices=Q1_CHOICES,
+    )
+
+    return d3i_props.PropsUIPromptQuestionnaire(
+        description=questionnaire_description,
+        questions=[
+            multiple_choice_q3,
+        ],
+        questionToChatgpt=last_question,
+        answerFromChatgpt=last_answer,
+    )
 
 class ChatGPTFlow(FlowBuilder):
     def __init__(self, session_id: int):
