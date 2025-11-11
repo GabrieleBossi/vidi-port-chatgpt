@@ -12,7 +12,8 @@ export default function useVisualizationData (
   const [worker, setWorker] = useState<Worker>()
 
   useEffect(() => {
-    const worker = new Worker(new URL('./visualizationDataWorker.ts', import.meta.url))
+    const worker = new Worker(
+      new URL('./visualizationDataWorker.ts', import.meta.url), {type: 'module'})
     setWorker(worker)
     return () => {
       worker.terminate()
@@ -27,6 +28,7 @@ export default function useVisualizationData (
           setVisualizationData(e.data.visualizationData)
           setStatus(e.data.status)
         } catch (e) {
+          console.log(e)
           setVisualizationData(undefined)
           setStatus('error')
         }

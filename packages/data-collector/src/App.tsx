@@ -3,14 +3,15 @@ import { ConsentFormVizFactory } from "./factories/consent_form_viz";
 import { FileInputMultipleFactory } from "./components/file_input_multiple/factory"
 import { ErrorPageFactory } from "./components/error_page/factory"
 import { QuestionnaireFactory } from "./components/questionnaire/factory"
+import { RetryPromptFactory } from "./components/retry_prompt/factory"
 
 function App() {
   return (
     <div className="App">
       <ScriptHostComponent
         workerUrl="./d3i_py_worker.js"
-        //standalone={process.env.NODE_ENV !== "production"}
-        standalone={true}
+        //standalone={import.meta.env.DEV}
+	standalone={true}
         factories={[
           new DataSubmissionPageFactory({
             promptFactories: [
@@ -18,6 +19,7 @@ function App() {
                 new FileInputMultipleFactory(),
                 new ErrorPageFactory(),
                 new QuestionnaireFactory(),
+                new RetryPromptFactory(),
             ],
           }),
         ]}

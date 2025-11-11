@@ -4,7 +4,7 @@ import { memo, useEffect, useMemo, useState } from 'react'
 import useVisualizationData from './visualizationDataFunctions/useVisualizationData'
 
 import RechartsGraph from './figures/recharts_graph'
-import VisxWordcloud from './figures/visx_wordcloud'
+import VisxWordcloud from './figures/d3_wordcloud'
 import { zoomInIcon, zoomOutIcon } from './zoom_icons'
 import { z } from 'zod'
 import { Loader } from './ui/loader'

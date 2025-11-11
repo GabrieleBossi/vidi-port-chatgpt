@@ -1,6 +1,6 @@
 # The data donation task
 
-The data donation task is front end that guides participants through the data donation steps, used in conjunction with Next.
+The data donation task (a fork of [Feldspar](https://github.com/eyra/feldspar)) is front end that guides participants through the data donation steps, used in conjunction with Next.
 Next is a software as a service platform developed by [Eyra](https://eyra.co/) to facilitate scientific research.
 
 ## Documentation
@@ -16,19 +16,20 @@ In order to start a local instance of the data donation task go through the foll
 
    - Fork or clone this repo
    - Install [Node.js](https://nodejs.org/en)
-   - Install [Python](https://www.python.org/)
+   - Install [pnpm](https://pnpm.io/installation)
+   - Install [Python](https://www.python.org/) (Version 3.11 or higher)
    - Install [Poetry](https://python-poetry.org/)
 
-1. Install dependencies & tools:
+1. Install dependencies:
 
    ```sh
-   npm install
+   pnpm install
    ```
 
 2. Start the local web server:
 
    ```sh
-   npm run start
+   pnpm run start
    ```
 
 3. You can now go to the browser: [`http://localhost:3000`](http://localhost:3000).

@@ -1,25 +1,42 @@
 {
   "name": "@eyra/data-collector",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "homepage": ".",
   "dependencies": {
-    "@eyra/feldspar": "^0.1.0",
-    "@visx/responsive": "^3.12.0",
-    "@visx/text": "^3.12.0",
-    "@visx/wordcloud": "^3.12.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@eyra/feldspar": "workspace:*",
+    "d3-cloud": "^1.2.7",
+    "lodash": "4.17.21",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.1.9",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.12",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.4",
     "react-highlight-words": "^0.21.0",
-    "react-scripts": "5.0.1",
     "recharts": "^2.15.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.0",
     "zod": "^3.24.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "clean": "rm -rf build node_modules"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite",
+    "test": "echo \"No tests specified\" && exit 0",
+    "clean": "rm -rf dist node_modules"
   },
   "browserslist": {
     "production": [

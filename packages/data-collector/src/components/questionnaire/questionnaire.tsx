@@ -76,7 +76,6 @@ export const Questionnaire = (props: Props): JSX.Element => {
       <div className='flex-wrap text-bodylarge font-body text-grey1 text-left'>
         {copy.description}
       </div>
-
       <div className='bg-primarylight rounded-lg shadow-md p-6 mt-4 mb-4'>
         <h3 className='text-lg font-semibold mb-2'>
             {copy.questionChatgptLabel}
@@ -102,7 +101,6 @@ export const Questionnaire = (props: Props): JSX.Element => {
             ))}
         </div>
       </div>
-
       <div>
         {renderQuestions()}
       </div>
