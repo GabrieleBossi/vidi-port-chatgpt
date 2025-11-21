@@ -57,8 +57,7 @@ class FlowBuilder:
             logger.info(f"Prompt for file for {self.platform_name}")
             file_prompt = self.generate_file_prompt()
             file_result = yield ph.render_page(self.UI_TEXT["submit_file_header"], file_prompt)
-            question = ""
-            answer = ""
+            questions_and_answers = []
             
             if file_result.__type__ == "PayloadString":
                 validation = self.validate_file(file_result.value)
@@ -67,7 +66,7 @@ class FlowBuilder:
                 if validation.get_status_code_id() == 0:
                     logger.info(f"Payload for {self.platform_name}")
                     self.table_list = self.extract_data(file_result.value, validation)
-                    first_question, first_answer, middle_question, middle_answer, last_question, last_answer = chatgpt.select_three_qas(file_result.value)
+                    questions_and_answers = chatgpt.select_three_qas(file_result.value)
                     if isinstance(self.table_list, Generator):
                         self.table_list = yield from self.table_list
 
@@ -98,33 +97,22 @@ class FlowBuilder:
 
                 # render questionnaire
                 # modified including three questions and answers rather than just a random one
-                if first_question != "" and first_answer != "":
-                    render_first_questionnaire_results = yield ph.render_page(
-                        props.Translatable({"en":"","nl":""}), 
-                        chatgpt.generate_first_questionnaire(first_question, first_answer)
-                    )
-                    if render_first_questionnaire_results.__type__ == "PayloadJSON":
-                        yield ph.donate(f"{self.session_id}-first-questionnaire-donation", render_first_questionnaire_results.value)
-
-                        if middle_question != "" and middle_answer != "":
-                            render_second_questionnaire_results = yield ph.render_page(
-                        props.Translatable({"en":"","nl":""}), 
-                        chatgpt.generate_second_questionnaire(middle_question, middle_answer)
+                for index, (question, answer) in enumerate(questions_and_answers, start=1):
+                    if question and answer:
+                        questionnaire_results = yield ph.render_page(
+                            props.Translatable({"en": "", "nl": ""}), 
+                            chatgpt.generate_questionnaire(question, answer, index)
                         )
-                        if render_second_questionnaire_results.__type__ == "PayloadJSON":
-                            yield ph.donate(f"{self.session_id}-second-questionnaire-donation", render_second_questionnaire_results.value)
-                            
-                            if last_question != "" and last_answer != "":
-                                render_third_questionnaire_results = yield ph.render_page(
-                            props.Translatable({"en":"","nl":""}), 
-                            chatgpt.generate_third_questionnaire(last_question, last_answer)
+                        
+                        if questionnaire_results.__type__ == "PayloadJSON":
+                            yield ph.donate(
+                                f"{self.session_id}-questionnaire-{index}-donation", 
+                                questionnaire_results.value
                             )
-                            if render_third_questionnaire_results.__type__ == "PayloadJSON":
-                                yield ph.donate(f"{self.session_id}-third-questionnaire-donation", render_third_questionnaire_results.value)
 
-            if result.__type__ == "PayloadFalse":
-                value = json.dumps('{"status" : "data_submission declined"}')
-                yield ph.donate(f"{self.session_id}", value)
+                            if result.__type__ == "PayloadFalse":
+                                value = json.dumps('{"status" : "data_submission declined"}')
+                                yield ph.donate(f"{self.session_id}", value)
             
         yield ph.exit(0, "Success")
     
