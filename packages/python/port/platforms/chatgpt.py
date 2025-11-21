@@ -11,6 +11,7 @@ from typing import Tuple
 
 import pandas as pd
 import numpy as np
+import random
 
 import port.api.props as props
 import port.api.d3i_props as d3i_props
@@ -116,7 +117,7 @@ def extraction(chatgpt_zip: str) -> list[d3i_props.PropsUIPromptConsentFormTable
     return tables_to_render
 
 
-def select_three_qas(chatgpt_zip: str)  -> Tuple[str, str]:
+def select_three_qas(chatgpt_zip: str)  -> list[Tuple[str, str]]:
     """
     Code to extract first, middle and last message sent by the user and corresponding answer by ChatGPT
     The extra effort is made here to make sure the answers is actually a follow up of the question 
@@ -127,12 +128,7 @@ def select_three_qas(chatgpt_zip: str)  -> Tuple[str, str]:
     conversations = eh.read_json_from_bytes(b)
 
     datapoints = []
-    first_question = ""
-    first_answer = ""
-    middle_question = ""
-    middle_answer = ""
-    last_question = ""
-    last_answer = ""
+    questions_and_answers = []
     try:
         for conversation in conversations:
             title = conversation["title"]
@@ -159,6 +155,7 @@ def select_three_qas(chatgpt_zip: str)  -> Tuple[str, str]:
                         datapoints.append(datapoint)
 
         df = pd.DataFrame(datapoints)
+        print(df)
 
         # conversation selection criterion
         no_parents = ~df["id"].isin(df["child"]) # Indicates the start of a convo: i.e. an message is no ones child
@@ -167,40 +164,20 @@ def select_three_qas(chatgpt_zip: str)  -> Tuple[str, str]:
 
         ids = df["id"][condition].tolist()
 
-        first_id = ids[0]
-        middle_id = ids[len(ids)//2]
-        last_id = ids[-1]
-        ids_filtered = [first_id, middle_id, last_id]
-
-        # check all suitable id's if for some reason a mistake happens check the next id
-        qls = []
-        als = []
-        for id in ids_filtered:
+        for id in random.sample(ids, len(ids)):  # Random order
             ql = df["message"][df["id"] == id].tolist()
             al = df["message"][df["parent"] == id].tolist()
-            if (
-                len(ql) == 1 and 
-                len(al) == 1 and 
-                ql[0] != "" and 
-                al[0] != ""
-            ):
-                qls.append(ql[0])
-                als.append(al[0])
 
-            if len(qls) == 3 and len(als) == 3:
+            if len(ql) == 1 and len(al) == 1 and ql[0] != "" and al[0] != "":
+                questions_and_answers.append((ql[0], al[0]))
+            
+            if len(questions_and_answers) == 3:
                 break
 
     except Exception as e:
         logger.error("Data extraction error: %s", e)
 
-    first_question = qls[0]
-    first_answer = als[0]
-    middle_question = qls[1]
-    middle_answer = als[1]
-    last_question = qls[2]
-    last_answer = als[2]
-
-    return first_question, first_answer, middle_question, middle_answer, last_question, last_answer
+    return questions_and_answers
 
 
 # Random question questionnaire
@@ -261,18 +238,15 @@ Q1_CHOICES = [
 #    return CommandUIRender(page)
 
 
-def generate_first_questionnaire(first_question: str, first_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
+def generate_questionnaire(question: str, answer: str, index: int) -> d3i_props.PropsUIPromptQuestionnaire:
     """
     Administer a basic questionnaire in Port.
-
     This function generates a prompt which can be rendered with render_page().
     The questionnaire demonstrates all currently implemented question types.
     In the current implementation, all questions are optional.
-
     You can build in logic by:
     - Chaining questionnaires together
     - Using extracted data in your questionnaires
-
     Usage:
         prompt = generate_questionnaire()
         results = yield render_page(header_text, prompt)
@@ -280,71 +254,36 @@ def generate_first_questionnaire(first_question: str, first_answer: str) -> d3i_
     The results.value contains a JSON string with question answers that 
     can then be donated with donate().
     """
-
-    questionnaire_description = props.Translatable(
-        {
-            "en": "Below you can find the start of a conversation you had with ChatGPT. We would like to ask you a question about it.",
-            "nl": "Hieronder vind u het begin van een gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
+    
+    ordinals_en = {1: "first", 2: "second", 3: "third"}
+    ordinals_nl = {1: "eerste", 2: "tweede", 3: "derde"}
+    
+    ordinal_en = ordinals_en.get(index, f"{index}th")
+    ordinal_nl = ordinals_nl.get(index, f"{index}e")
+    
+    # Adjust article for Dutch
+    article_nl = "een" if index == 1 else "een"
+    
+    questionnaire_description = props.Translatable({
+        "en": f"Below you can find the start of a {ordinal_en} conversation you had with ChatGPT. We would like to ask you a question about it.",
+        "nl": f"Hieronder vind u het begin van {article_nl} {ordinal_nl} gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
     })
-
-    multiple_choice_q1 = d3i_props.PropsUIQuestionMultipleChoice(
-        id=1,
+    
+    multiple_choice = d3i_props.PropsUIQuestionMultipleChoice(
+        id=index,
         question=Q1,
         choices=Q1_CHOICES,
     )
-
+    
     return d3i_props.PropsUIPromptQuestionnaire(
         description=questionnaire_description,
         questions=[
-            multiple_choice_q1,
+            multiple_choice,
         ],
-        questionToChatgpt=first_question,
-        answerFromChatgpt=first_answer,
+        questionToChatgpt=question,
+        answerFromChatgpt=answer,
     )
 
-def generate_second_questionnaire(middle_question: str, middle_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
-    questionnaire_description = props.Translatable(
-        {
-            "en": "Below you can find the start of a second conversation you had with ChatGPT. We would like to ask you a question about it.",
-            "nl": "Hieronder vind u het begin van een tweede gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
-    })
-
-    multiple_choice_q2 = d3i_props.PropsUIQuestionMultipleChoice(
-        id=2,
-        question=Q1,
-        choices=Q1_CHOICES,
-    )
-
-    return d3i_props.PropsUIPromptQuestionnaire(
-        description=questionnaire_description,
-        questions=[
-            multiple_choice_q2,
-        ],
-        questionToChatgpt=middle_question,
-        answerFromChatgpt=middle_answer,
-    )
-
-def generate_third_questionnaire(last_question: str, last_answer: str) -> d3i_props.PropsUIPromptQuestionnaire:
-    questionnaire_description = props.Translatable(
-        {
-            "en": "Below you can find the start of a third conversation you had with ChatGPT. We would like to ask you a question about it.",
-            "nl": "Hieronder vind u het begin van een derde gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
-    })
-
-    multiple_choice_q3 = d3i_props.PropsUIQuestionMultipleChoice(
-        id=3,
-        question=Q1,
-        choices=Q1_CHOICES,
-    )
-
-    return d3i_props.PropsUIPromptQuestionnaire(
-        description=questionnaire_description,
-        questions=[
-            multiple_choice_q3,
-        ],
-        questionToChatgpt=last_question,
-        answerFromChatgpt=last_answer,
-    )
 
 class ChatGPTFlow(FlowBuilder):
     def __init__(self, session_id: int):
