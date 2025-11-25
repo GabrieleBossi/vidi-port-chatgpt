@@ -7,7 +7,6 @@ from abc import abstractmethod
 from typing import Generator
 import json
 import logging
-import json
 
 import port.api.props as props
 import port.api.d3i_props as d3i_props
@@ -57,7 +56,6 @@ class FlowBuilder:
             logger.info(f"Prompt for file for {self.platform_name}")
             file_prompt = self.generate_file_prompt()
             file_result = yield ph.render_page(self.UI_TEXT["submit_file_header"], file_prompt)
-            questions_and_answers = []
             
             if file_result.__type__ == "PayloadString":
                 validation = self.validate_file(file_result.value)
@@ -66,7 +64,6 @@ class FlowBuilder:
                 if validation.get_status_code_id() == 0:
                     logger.info(f"Payload for {self.platform_name}")
                     self.table_list = self.extract_data(file_result.value, validation)
-                    questions_and_answers = chatgpt.select_three_qas(file_result.value)
                     if isinstance(self.table_list, Generator):
                         self.table_list = yield from self.table_list
 
@@ -97,23 +94,26 @@ class FlowBuilder:
 
                 # render questionnaire
                 # modified including three questions and answers rather than just a random one
-                for index, (question, answer) in enumerate(questions_and_answers, start=1):
-                    if question and answer:
-                        questionnaire_results = yield ph.render_page(
-                            props.Translatable({"en": "", "nl": ""}), 
-                            chatgpt.generate_questionnaire(question, answer, index)
-                        )
-                        
-                        if questionnaire_results.__type__ == "PayloadJSON":
-                            yield ph.donate(
-                                f"{self.session_id}-questionnaire-{index}-donation", 
-                                questionnaire_results.value
+                donated_data = json.loads(reviewed_data)[0]["chatgpt_conversations"]
+                if len(donated_data) > 0:
+                    questions_and_answers = chatgpt.select_three_qas(donated_data)
+                    for index, (question, answer) in enumerate(questions_and_answers, start=1):
+                        if question and answer:
+                            questionnaire_results = yield ph.render_page(
+                                props.Translatable({"en": "", "nl": ""}), 
+                                chatgpt.generate_questionnaire(question, answer, index)
                             )
+                            
+                            if questionnaire_results.__type__ == "PayloadJSON":
+                                yield ph.donate(
+                                    f"{self.session_id}-questionnaire-{index}-donation", 
+                                    questionnaire_results.value
+                                )
 
-                            if result.__type__ == "PayloadFalse":
-                                value = json.dumps('{"status" : "data_submission declined"}')
-                                yield ph.donate(f"{self.session_id}", value)
-            
+                                if result.__type__ == "PayloadFalse":
+                                    value = json.dumps('{"status" : "data_submission declined"}')
+                                    yield ph.donate(f"{self.session_id}", value)
+                
         yield ph.exit(0, "Success")
     
     # Methods to be overridden by platform-specific implementations

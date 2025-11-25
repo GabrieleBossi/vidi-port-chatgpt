@@ -11,7 +11,6 @@ from typing import Tuple
 
 import pandas as pd
 import numpy as np
-import random
 
 import port.api.props as props
 import port.api.d3i_props as d3i_props
@@ -42,8 +41,8 @@ DDP_CATEGORIES = [
     )
 ]
 
+def extract_conversations(chatgpt_zip: str) -> pd.DataFrame:
 
-def conversations_to_df(chatgpt_zip: str)  -> pd.DataFrame:
     b = eh.extract_file_from_zip(chatgpt_zip, "conversations.json")
     conversations = eh.read_json_from_bytes(b)
 
@@ -53,25 +52,31 @@ def conversations_to_df(chatgpt_zip: str)  -> pd.DataFrame:
     try:
         for conversation in conversations:
             title = conversation["title"]
+            conversation_id = conversation["conversation_id"]
+            i = 0
             for _, turn in conversation["mapping"].items():
 
                 denested_d = eh.dict_denester(turn)
                 is_hidden = eh.find_item(denested_d, "is_visually_hidden_from_conversation")
-                if is_hidden != "True":
-                    role = eh.find_item(denested_d, "role")
-                    message = "".join(eh.find_items(denested_d, "part"))
-                    model = eh.find_item(denested_d, "-model_slug")
-                    time = eh.epoch_to_iso(eh.find_item(denested_d, "create_time"))
+                content_type = eh.find_item(denested_d, "content_type")
+                role = eh.find_item(denested_d, "role")
+                if (content_type != "text") or (is_hidden == "True") or (role not in ["user", "assistant"]):
+                    continue
+                message = "".join(eh.find_items(denested_d, "part"))
+                model = eh.find_item(denested_d, "-model_slug")
+                time = eh.epoch_to_iso(eh.find_item(denested_d, "create_time"))
 
-                    datapoint = {
-                        "conversation title": title,
-                        "role": role,
-                        "message": message,
-                        "model": model,
-                        "time": time,
-                    }
-                    if role != "":
-                        datapoints.append(datapoint)
+                datapoint = {
+                    "conversation title": title,
+                    "role": role,
+                    "message": message,
+                    "model": model,
+                    "time": time,
+                    "conversation_id": conversation_id,
+                    "is_first": True if i < 2 else False  # Label first qa pair
+                }
+                datapoints.append(datapoint)
+                i += 1 
 
         out = pd.DataFrame(datapoints)
 
@@ -79,6 +84,22 @@ def conversations_to_df(chatgpt_zip: str)  -> pd.DataFrame:
         logger.error("Data extraction error: %s", e)
         
     return out
+
+
+def conversations_to_df(conversations: pd.DataFrame) -> pd.DataFrame:
+
+    df = conversations.copy()
+    df = df[[
+        "conversation title", 
+        "role",
+        "message",
+        "model",
+        "time",
+        "conversation_id",
+        "is_first"
+    ]]
+    
+    return df
 
 
 
@@ -89,7 +110,7 @@ def extraction(chatgpt_zip: str) -> list[d3i_props.PropsUIPromptConsentFormTable
     tables = [
         d3i_props.PropsUIPromptConsentFormTableViz(
             id="chatgpt_conversations",
-            data_frame=conversations_to_df(chatgpt_zip),
+            data_frame=conversations_to_df(extract_conversations(chatgpt_zip)),
             title=props.Translatable({
                 "en": "Your conversations with ChatGPT",
                 "nl": "Uw gesprekken met ChatGPT"
@@ -117,64 +138,33 @@ def extraction(chatgpt_zip: str) -> list[d3i_props.PropsUIPromptConsentFormTable
     return tables_to_render
 
 
-def select_three_qas(chatgpt_zip: str)  -> list[Tuple[str, str]]:
+def select_three_qas(donated_data: list[dict])  -> list[Tuple[str, str]]:
     """
     Code to extract first, middle and last message sent by the user and corresponding answer by ChatGPT
     The extra effort is made here to make sure the answers is actually a follow up of the question 
     and to make sure the question is the first in the conversation
     """
 
-    b = eh.extract_file_from_zip(chatgpt_zip, "conversations.json")
-    conversations = eh.read_json_from_bytes(b)
+    # Only consider conversations where the first qa pair wasn't deleted
+    conversations = pd.DataFrame(donated_data)
+    conversations = conversations[conversations.is_first == "true"].groupby("conversation_id", as_index=False).filter(lambda x: len(x) == 2)
 
-    datapoints = []
+    # Select first, last and middle conversation if possible   
+    conversation_ids = conversations['conversation_id'].unique()
+    if len(conversation_ids) == 0:
+        indexes = []
+    elif len(conversation_ids) == 1:
+        indexes = [0]
+    elif len(conversation_ids) == 2:
+        indexes = [0, 1]
+    else:
+        indexes = [0, len(conversation_ids)//2, -1]
+    selected_ids = [conversation_ids[i] for i in indexes]
+    selected_conversations = conversations[conversations['conversation_id'].isin(selected_ids)]
+    
     questions_and_answers = []
-    try:
-        for conversation in conversations:
-            title = conversation["title"]
-            for _, turn in conversation["mapping"].items():
-
-                denested_d = eh.dict_denester(turn)
-                is_hidden = eh.find_item(denested_d, "is_visually_hidden_from_conversation")
-                if is_hidden != "True":
-                    role = eh.find_item(denested_d, "role")
-                    message = "".join(eh.find_items(denested_d, "part"))
-                    id = eh.find_item(denested_d, "id")
-                    child = eh.find_item(denested_d, "children-0")
-                    parent = eh.find_item(denested_d, "parent")
-
-                    datapoint = {
-                        "conversation title": title,
-                        "role": role,
-                        "message": message,
-                        "id": id,
-                        "child": child,
-                        "parent": parent,
-                    }
-                    if role != "":
-                        datapoints.append(datapoint)
-
-        df = pd.DataFrame(datapoints)
-
-        # conversation selection criterion
-        no_parents = ~df["id"].isin(df["child"]) # Indicates the start of a convo: i.e. an message is no ones child
-        is_user = df["role"] == "user"           # The role should be user: ai cannot start
-        condition = no_parents & is_user 
-
-        ids = df["id"][condition].tolist()
-
-        for id in random.sample(ids, len(ids)):  # Random order
-            ql = df["message"][df["id"] == id].tolist()
-            al = df["message"][df["parent"] == id].tolist()
-
-            if len(ql) == 1 and len(al) == 1 and ql[0] != "" and al[0] != "":
-                questions_and_answers.append((ql[0], al[0]))
-            
-            if len(questions_and_answers) == 3:
-                break
-
-    except Exception as e:
-        logger.error("Data extraction error: %s", e)
+    for conversation_id, group in selected_conversations.groupby('conversation_id'):
+        questions_and_answers.append(group["message"].tolist())
 
     return questions_and_answers
 
