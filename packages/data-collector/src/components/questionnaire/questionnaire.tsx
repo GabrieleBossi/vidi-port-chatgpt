@@ -31,7 +31,7 @@ export const Questionnaire = (props: Props): JSX.Element => {
     } else {
       window.scrollTo(0,0)
     }
-  }, [])
+  }, [props])
 
   function handleDonate (): void {
     const toStore = {

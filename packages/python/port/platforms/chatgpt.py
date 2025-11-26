@@ -171,16 +171,18 @@ def select_three_qas(donated_data: list[dict])  -> list[Tuple[str, str]]:
 
 # Random question questionnaire
 
+# Question measuring trust in answer provided by ChatGPT
+
 Q1 = props.Translatable(
     {
         "en": "To what extent do you trust the answer provided by ChatGPT?",
-        "nl": "In hoeverre vertrouwt u het antwoord van ChatGPT?"
+        "nl": "Hoeveel vertrouwen heeft u in het antwoord van ChatGPT?"
     })
 Q1_CHOICES = [
     props.Translatable(
         {
             "en": "1. I do not trust it at all", 
-            "nl": "1. Ik vertrouw het helemaal niet"
+            "nl": "1. Helemaal geen vertrouwen"
         }),
     props.Translatable(
         {
@@ -197,12 +199,125 @@ Q1_CHOICES = [
             "en": "4",
              "nl": "4"
          }),
+    props.Translatable(
+        {
+            "en": "5",
+            "nl": "5"
+         }),
+    props.Translatable(
+        {
+            "en": "6",
+             "nl": "6"
+         }),
     props.Translatable({
-        "en": "5. I trust it completely", 
-        "nl": "5. Ik vertrouw het volledig"
+        "en": "7. I trust it completely", 
+        "nl": "7. Volledig vertrouwen"
     })
 ]
 
+# Question measuring privacy
+
+Q2 = props.Translatable(
+    {
+        "en": "The information in this conversation is:",
+        "nl": "De informatioe in dit gesprek is:"
+    })
+Q2_CHOICES = [
+    props.Translatable(
+        {
+            "en": "1. Not at all personal about me", 
+            "nl": "1. Helemaal niet persoonlijk over mij"
+        }),
+    props.Translatable(
+        {
+            "en": "2", 
+             "nl": "2"
+        }),
+    props.Translatable(
+        {
+            "en": "3", 
+            "nl": "3"
+        }),
+    props.Translatable(
+        {
+            "en": "4",
+             "nl": "4"
+         }),
+    props.Translatable(
+        {
+            "en": "5",
+            "nl": "5"
+         }),
+    props.Translatable(
+        {
+            "en": "6",
+             "nl": "6"
+         }),
+    props.Translatable({
+        "en": "7. Highly personal about me", 
+        "nl": "7. Heel persoonlijk over mij"
+    })
+]
+
+# Question measuring use type
+
+Q3 = props.Translatable(
+    {
+        "en": "What is this conversation about?",
+        "nl": "Waar gaat dit gesprek over?"
+    })
+Q3_CHOICES = [
+    props.Translatable(
+        {
+            "en": "1. Help with work or school", 
+            "nl": "1. Hulp bij werk of school"
+        }),
+    props.Translatable(
+        {
+            "en": "2. Writing texts or improving them", 
+             "nl": "2. Teksten schrijven of beter maken"
+        }),
+    props.Translatable(
+        {
+            "en": "3. Entertainment or doing something fun", 
+            "nl": "3. Amusement of iets leuks doen"
+        }),
+    props.Translatable(
+        {
+            "en": "4. Coming up with creative ideas or new things",
+             "nl": "4. Creatieve ideeën of nieuwe dingen bedenken"
+         }),
+    props.Translatable(
+        {
+            "en": "5. Help to learn something new or understand something difficult better",
+            "nl": "5. Hulp om iets nieuws te leren of iets moeilijks beter te snappen"
+         }),
+    props.Translatable(
+        {
+            "en": "6. Looking up information or answering questions",
+             "nl": "6. Informatie zoeken of vragen beantwoorden"
+         }),
+    props.Translatable({
+            "en": "7. News and current events", 
+            "nl": "7. Nieuws en actualiteiten"
+        }), 
+    props.Translatable({
+            "en": "8. Just talking or looking for company", 
+             "nl": "8. Gewoon praten of gezelschap zoeken"
+        }), 
+    props.Translatable({
+            "en": "9. Talking about personal questions or sensitive topics", 
+            "nl": "9. Persoonlijke vragen of gevoelige onderwerpen bespreken"
+        }), 
+    props.Translatable({
+            "en": "10. Help with daily things, like cooking, traveling, or other practical tasks", 
+             "nl": "10. Hulp bij dagelijkse dingen, zoals koken, reizen of andere praktische zaken"
+        }), 
+    props.Translatable({
+        "en": "11. Something else", 
+        "nl": "11. Iets anders"
+    })
+]
 
 #def render_questionnaire(question: str, answer: str):
 #    questions = [
@@ -254,20 +369,34 @@ def generate_questionnaire(question: str, answer: str, index: int) -> d3i_props.
     article_nl = "een" if index == 1 else "een"
     
     questionnaire_description = props.Translatable({
-        "en": f"Below you can find the start of a {ordinal_en} conversation you had with ChatGPT. We would like to ask you a question about it.",
-        "nl": f"Hieronder vind u het begin van {article_nl} {ordinal_nl} gesprek dat u heeft gehad met ChatGPT. We willen u daar een vraag over stellen."
+        "en": f"Below you can find the start of a {ordinal_en} conversation you had with ChatGPT. We would like to ask you a few questions about it.",
+        "nl": f"Hieronder vind u het begin van {article_nl} {ordinal_nl} gesprek dat u heeft gehad met ChatGPT. We willen u daar een paar vragen over stellen."
     })
     
-    multiple_choice = d3i_props.PropsUIQuestionMultipleChoice(
-        id=index,
+    multiple_choice_trust = d3i_props.PropsUIQuestionMultipleChoice(
+        id=f"{index}-trust",
         question=Q1,
         choices=Q1_CHOICES,
+    )
+
+    multiple_choice_privacy = d3i_props.PropsUIQuestionMultipleChoice(
+        id=f"{index}-privacy",
+        question=Q2,
+        choices=Q2_CHOICES,
+    )
+
+    multiple_choice_usetype = d3i_props.PropsUIQuestionMultipleChoice(
+        id=f"{index}-usetype",
+        question=Q3,
+        choices=Q3_CHOICES,
     )
     
     return d3i_props.PropsUIPromptQuestionnaire(
         description=questionnaire_description,
         questions=[
-            multiple_choice,
+            multiple_choice_trust,
+            multiple_choice_privacy,
+            multiple_choice_usetype
         ],
         questionToChatgpt=question,
         answerFromChatgpt=answer,

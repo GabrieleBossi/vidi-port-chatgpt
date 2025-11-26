@@ -214,7 +214,7 @@ class PropsUIQuestionMultipleChoice:
         question (Translatable): The question text.
         choices (list[Translatable]): List of choices.
     """
-    id: int
+    id: str
     question: props.Translatable
     choices: list[props.Translatable]
 
