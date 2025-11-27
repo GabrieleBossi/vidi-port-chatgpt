@@ -53,7 +53,8 @@ def extract_conversations(chatgpt_zip: str) -> pd.DataFrame:
         for conversation in conversations:
             title = conversation["title"]
             conversation_id = conversation["conversation_id"]
-            i = 0
+            first_question = None
+            first_answer = None
             for _, turn in conversation["mapping"].items():
 
                 denested_d = eh.dict_denester(turn)
@@ -63,9 +64,17 @@ def extract_conversations(chatgpt_zip: str) -> pd.DataFrame:
                 if (content_type != "text") or (is_hidden == "True") or (role not in ["user", "assistant"]):
                     continue
                 message = "".join(eh.find_items(denested_d, "part"))
+                # In some cases, an assistant's response is empty
+                if (role == "assistant") and (not message):
+                    continue
                 model = eh.find_item(denested_d, "-model_slug")
                 time = eh.epoch_to_iso(eh.find_item(denested_d, "create_time"))
-
+                # Is first question or answer?
+                id = eh.find_item(denested_d, "id")
+                if (role == "user") and (not first_question):
+                    first_question = id
+                elif (role == "assistant") and (not first_answer):
+                    first_answer = id
                 datapoint = {
                     "conversation title": title,
                     "role": role,
@@ -73,10 +82,9 @@ def extract_conversations(chatgpt_zip: str) -> pd.DataFrame:
                     "model": model,
                     "time": time,
                     "conversation_id": conversation_id,
-                    "is_first": True if i < 2 else False  # Label first qa pair
+                    "is_first": True if ((first_question == id) or (first_answer == id)) else False  # Label first qa pair
                 }
                 datapoints.append(datapoint)
-                i += 1 
 
         out = pd.DataFrame(datapoints)
 
@@ -162,9 +170,8 @@ def select_three_qas(donated_data: list[dict])  -> list[Tuple[str, str]]:
     selected_ids = [conversation_ids[i] for i in indexes]
     selected_conversations = conversations[conversations['conversation_id'].isin(selected_ids)]
     
-    questions_and_answers = []
-    for conversation_id, group in selected_conversations.groupby('conversation_id'):
-        questions_and_answers.append(group["message"].tolist())
+    messages = selected_conversations["message"].tolist()
+    questions_and_answers = list(zip(messages[0::2], messages[1::2]))
 
     return questions_and_answers
 
