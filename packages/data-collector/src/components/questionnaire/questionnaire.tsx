@@ -31,7 +31,7 @@ export const Questionnaire = (props: Props): JSX.Element => {
     } else {
       window.scrollTo(0,0)
     }
-  }, [])
+  }, [props])
 
   function handleDonate (): void {
     const toStore = {
@@ -137,7 +137,7 @@ const continueLabel = new TextBundle()
 
 const questionChatgptLabel = new TextBundle()
   .add('en', 'Your question to ChatGPT')
-  .add('nl', 'Jouw vraag aan ChatGPT')
+  .add('nl', 'Uw vraag aan ChatGPT')
 
 
 const answerChatgptLabel = new TextBundle()
