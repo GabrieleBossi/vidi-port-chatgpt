@@ -137,7 +137,7 @@ const continueLabel = new TextBundle()
 
 const questionChatgptLabel = new TextBundle()
   .add('en', 'Your question to ChatGPT')
-  .add('nl', 'Jouw vraag aan ChatGPT')
+  .add('nl', 'Uw vraag aan ChatGPT')
 
 
 const answerChatgptLabel = new TextBundle()

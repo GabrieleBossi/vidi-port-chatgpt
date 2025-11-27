@@ -117,13 +117,13 @@ def extraction(chatgpt_zip: str) -> list[d3i_props.PropsUIPromptConsentFormTable
             }),
             description=props.Translatable({
                 "en": "In this table you find your conversations with ChatGPT sorted by time. Below, you find a wordcloud, where the size of the words represents how frequent these words have been used in the conversations.", 
-                "nl": "In this table you find your conversations with ChatGPT sorted by time. Below, you find a wordcloud, where the size of the words represents how frequent these words have been used in the conversations.", 
+                "nl": "In deze tabel ziet u uw gesprekken met ChatGPT, op tijd gezet. Onder de tabel staat een woordenwolk. Hoe groter een woord is, hoe vaker het in de gesprekken voorkomt.", 
             }),
             visualizations=[
                 {
                     "title": {
                         "en": "Your messages in a wordcloud", 
-                        "nl": "Your messages in a wordcloud"
+                        "nl": "Uw berichten in een woordenwolk"
                     },
                     "type": "wordcloud",
                     "textColumn": "message",
@@ -220,7 +220,7 @@ Q1_CHOICES = [
 Q2 = props.Translatable(
     {
         "en": "The information in this conversation is:",
-        "nl": "De informatioe in dit gesprek is:"
+        "nl": "De informatie in dit gesprek is:"
     })
 Q2_CHOICES = [
     props.Translatable(
@@ -359,18 +359,9 @@ def generate_questionnaire(question: str, answer: str, index: int) -> d3i_props.
     can then be donated with donate().
     """
     
-    ordinals_en = {1: "first", 2: "second", 3: "third"}
-    ordinals_nl = {1: "eerste", 2: "tweede", 3: "derde"}
-    
-    ordinal_en = ordinals_en.get(index, f"{index}th")
-    ordinal_nl = ordinals_nl.get(index, f"{index}e")
-    
-    # Adjust article for Dutch
-    article_nl = "een" if index == 1 else "een"
-    
     questionnaire_description = props.Translatable({
-        "en": f"Below you can find the start of a {ordinal_en} conversation you had with ChatGPT. We would like to ask you a few questions about it.",
-        "nl": f"Hieronder vind u het begin van {article_nl} {ordinal_nl} gesprek dat u heeft gehad met ChatGPT. We willen u daar een paar vragen over stellen."
+        "en": "Thank you. We would like to understand how people talk with ChatGPT. Our system has selected up to three conversations that you had with ChatGPT in the past. Below you can view one of these conversations. Could you please help us by answering the questions below?",
+        "nl": "Dank u. We willen graag weten hoe mensen met ChatGPT praten. Ons systeem heeft tot drie gesprekken gekozen die u eerder met ChatGPT had. Hieronder ziet u één van deze gesprekken. Kunt u ons alstublieft helpen door de vragen hieronder te beantwoorden?"
     })
     
     multiple_choice_trust = d3i_props.PropsUIQuestionMultipleChoice(
